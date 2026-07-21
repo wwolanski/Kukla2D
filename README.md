@@ -38,7 +38,7 @@ Requirements: Node.js `>=24.18.0 <25` and npm `>=11.17.0 <12`.
 
 ```bash
 git clone https://github.com/wwolanski/Kukla2D.git
-cd kukla2d
+cd Kukla2D
 npm ci
 npm run dev
 ```

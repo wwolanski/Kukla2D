@@ -318,7 +318,7 @@ export function PreferencesModal({ open, onOpenChange }) {
                 <div className="space-y-3 text-center py-4">
                   <div className="flex justify-center">
                     <img
-                      src="/compressed/kukla2d.png"
+                      src={`${import.meta.env.BASE_URL}compressed/kukla2d.png`}
                       alt="Kukla2D"
                       className="w-36 h-auto"
                     />

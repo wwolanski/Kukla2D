@@ -46,7 +46,7 @@ export function EditorHeader({
   return (
     <header className="h-10 border-b flex items-center px-4 shrink-0 bg-card gap-3 relative">
       <div className="flex items-center gap-3 h-full">
-        <img src="/compressed//kukla2d.png" alt="Kukla2D" className="h-7 w-auto object-contain" />
+        <img src={`${import.meta.env.BASE_URL}compressed/kukla2d.png`} alt="Kukla2D" className="h-7 w-auto object-contain" />
         <span className="text-xs text-muted-foreground border border-border/50 px-1.5 py-0.5 font-mono">v{__APP_VERSION__}</span>
 
         <div className="flex h-full items-stretch border-l border-r ml-1 mr-2">
