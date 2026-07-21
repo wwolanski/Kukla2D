@@ -1,0 +1,83 @@
+{
+  "textures": [
+    {
+      "image": "page-0.png",
+      "frames": [
+        {
+          "filename": "walk/0000",
+          "frame": {
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32
+          },
+          "rotated": false,
+          "trimmed": false,
+          "spriteSourceSize": {
+            "x": 0,
+            "y": 0,
+            "w": 32,
+            "h": 32
+          },
+          "sourceSize": {
+            "w": 32,
+            "h": 32
+          }
+        },
+        {
+          "filename": "walk/0001",
+          "frame": {
+            "x": 32,
+            "y": 0,
+            "w": 28,
+            "h": 36
+          },
+          "rotated": false,
+          "trimmed": false,
+          "spriteSourceSize": {
+            "x": 0,
+            "y": 0,
+            "w": 28,
+            "h": 36
+          },
+          "sourceSize": {
+            "w": 28,
+            "h": 36
+          }
+        }
+      ]
+    },
+    {
+      "image": "page-1.png",
+      "frames": [
+        {
+          "filename": "walk/0002",
+          "frame": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 40
+          },
+          "rotated": false,
+          "trimmed": false,
+          "spriteSourceSize": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 40
+          },
+          "sourceSize": {
+            "w": 24,
+            "h": 40
+          }
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "app": "Kukla2D",
+    "version": "1",
+    "format": "RGBA8888",
+    "scale": "1"
+  }
+}

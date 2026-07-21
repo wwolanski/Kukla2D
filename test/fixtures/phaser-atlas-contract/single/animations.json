@@ -1,0 +1,27 @@
+{
+  "anims": [
+    {
+      "key": "test-char:idle",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "test-char",
+          "frame": "idle/0000",
+          "duration": 0
+        },
+        {
+          "key": "test-char",
+          "frame": "idle/0001",
+          "duration": 0
+        }
+      ],
+      "frameRate": 10,
+      "skipMissedFrames": true,
+      "delay": 0,
+      "repeat": -1,
+      "repeatDelay": 0,
+      "yoyo": false
+    }
+  ],
+  "globalTimeScale": 1
+}

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Phaser Atlas Export E2E</title>
+  <style>body { margin: 0; }</style>
+</head>
+<body>
+  <script type="importmap">
+  {
+    "imports": {
+      "phaser": "/node_modules/phaser/dist/phaser.esm.js",
+      "@kukla2d/adapter-phaser-atlas": "/packages/adapters/phaser-atlas/src/index.ts"
+    }
+  }
+  </script>
+  <script type="module">
+    import Phaser from 'phaser';
+    import { encodePhaserAtlasPackage } from '@kukla2d/adapter-phaser-atlas';
+
+    const results = {
+      single: null,
+      multi: null,
+      origin: null,
+      determinism: null,
+      metadata: null,
+      errors: [],
+      phaserVersion: Phaser.VERSION,
+    };
+    window.__EXPORT_RESULTS = results;
+    window.__EXPORT_DONE = false;
+
+    const TEXTURE_KEY = 'golden-char';
+
+    function drawRect(rgba, cw, ch, x, y, w, h, r, g, b, a = 255) {
+      for (let row = y; row < y + h && row < ch; row++) {
+        for (let col = x; col < x + w && col < cw; col++) {
+          const i = (row * cw + col) * 4;
+          rgba[i] = r; rgba[i + 1] = g; rgba[i + 2] = b; rgba[i + 3] = a;
+        }
+      }
+    }
+
+    function rgbaToDataUrl(rgba, w, h) {
+      const canvas = new OffscreenCanvas(w, h);
+      const ctx = canvas.getContext('2d');
+      ctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+      return new Promise(resolve => {
+        canvas.convertToBlob({ type: 'image/png' }).then(blob => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      });
+    }
+
+    const FW = 64, FH = 64;
+
+    function makeIdle0() { const r = new Uint8ClampedArray(FW*FH*4); drawRect(r,FW,FH,10,5,20,20,220,40,40); return r; }
+    function makeIdle1() { return new Uint8ClampedArray(FW*FH*4); }
+    function makeIdle2() { const r = new Uint8ClampedArray(FW*FH*4); drawRect(r,FW,FH,15,10,20,20,220,40,40); return r; }
+    function makeWalk0() { const r = new Uint8ClampedArray(FW*FH*4); drawRect(r,FW,FH,2,8,30,25,40,80,220); return r; }
+    function makeWalk1() { const r = new Uint8ClampedArray(FW*FH*4); drawRect(r,FW,FH,20,3,30,25,40,80,220); return r; }
+
+    async function buildFrames() {
+      const defs = [
+        { rgba: makeIdle0(), aId: 'a-idle', aName: 'idle', fi: 0 },
+        { rgba: makeIdle1(), aId: 'a-idle', aName: 'idle', fi: 1 },
+        { rgba: makeIdle2(), aId: 'a-idle', aName: 'idle', fi: 2 },
+        { rgba: makeWalk0(), aId: 'a-walk', aName: 'walk', fi: 0 },
+        { rgba: makeWalk1(), aId: 'a-walk', aName: 'walk', fi: 1 },
+      ];
+      const out = [];
+      for (const d of defs) {
+        out.push({
+          identity: `${d.aName}-${d.aId}/${String(d.fi).padStart(4, '0')}`,
+          animId: d.aId, animName: d.aName, frameIndex: d.fi,
+          dataUrl: await rgbaToDataUrl(d.rgba, FW, FH),
+          sourceWidth: FW, sourceHeight: FH,
+        });
+      }
+      return out;
+    }
+
+    const ANIMS = [
+      { id: 'a-idle', name: 'idle', duration: 500, fps: 10, markers: [{ id: 'm1', time: 0, label: 'start' }] },
+      { id: 'a-walk', name: 'walk', duration: 600, fps: 10, markers: [{ id: 'm2', time: 300, label: 'step' }] },
+    ];
+
+    function findEntry(data, suffix) {
+      return Object.entries(data).find(([k]) => k.endsWith(suffix));
+    }
+
+    async function extractTextData(artifacts) {
+      const d = {};
+      for (const a of artifacts) {
+        if (a.mimeType !== 'image/png') d[a.relativePath ?? a.fileName] = await a.blob.text();
+      }
+      return d;
+    }
+
+    async function loadPhaser(textureKey, atlasUrl, pngUrl, animsUrl, multi) {
+      return new Promise((resolve, reject) => {
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        class S extends Phaser.Scene {
+          constructor() { super('S'); }
+          preload() {
+            this.load.on('loaderror', f => results.errors.push({ phase: 'load', key: f.key }));
+            if (multi) this.load.multiatlas(textureKey, atlasUrl, '');
+            else this.load.atlas(textureKey, pngUrl, atlasUrl);
+            this.load.animation(textureKey + '-anims', animsUrl);
+          }
+          create() {
+            const tex = this.textures.get(textureKey);
+            const names = tex.getFrameNames().filter(n => n !== '__BASE').sort();
+            const keys = this.anims.toJSON().anims.map(a => a.key);
+            resolve({ scene: this, tex, names, keys, game, el });
+          }
+        }
+        const game = new Phaser.Game({ type: Phaser.CANVAS, transparent: true, width: 320, height: 240, parent: el, scene: [S] });
+        setTimeout(() => reject(new Error('timeout')), 15000);
+      });
+    }
+
+    async function testSingle() {
+      try {
+        const frames = await buildFrames();
+        const res = await encodePhaserAtlasPackage(frames, {
+          fps: 10, scale: 100, trim: true, padding: 2,
+          maxPageSize: 2048, loop: true, outputName: TEXTURE_KEY,
+          destination: 'zip', textureKey: TEXTURE_KEY, animations: ANIMS,
+          bakeIssues: [{ classification: 'baked', code: 'BONE', path: 'bones', message: 'Baked' }],
+        });
+        if (!res.ok) { results.single = { ok: false, code: res.code, msg: res.message }; return; }
+
+        const atlasBlob = res.artifacts.find(a => a.fileName.endsWith('.atlas.json'));
+        const animsBlob = res.artifacts.find(a => a.fileName.endsWith('.animations.json'));
+        const pngBlob = res.artifacts.find(a => a.mimeType === 'image/png');
+        const atlas = JSON.parse(await atlasBlob.blob.text());
+        const anims = JSON.parse(await animsBlob.blob.text());
+
+        const { scene, tex, names, keys, game, el } = await loadPhaser(
+          TEXTURE_KEY, URL.createObjectURL(atlasBlob.blob),
+          URL.createObjectURL(pngBlob.blob), URL.createObjectURL(animsBlob.blob), false
+        );
+
+        async function pixelDiff(frameName, expected) {
+          const sprite = scene.add.sprite(32, 32, TEXTURE_KEY, frameName).setOrigin(0.5);
+          await new Promise(resolve => scene.game.events.once('postrender', resolve));
+          const actual = scene.game.canvas.getContext('2d').getImageData(0, 0, FW, FH).data;
+          let different = 0;
+          for (let i = 0; i < actual.length; i++) {
+            if (actual[i] !== expected[i]) different++;
+          }
+          sprite.destroy();
+          await new Promise(resolve => scene.game.events.once('postrender', resolve));
+          return different;
+        }
+
+        const originDiffs = [
+          await pixelDiff('idle-a-idle/0000', makeIdle0()),
+          await pixelDiff('idle-a-idle/0001', makeIdle1()),
+          await pixelDiff('idle-a-idle/0002', makeIdle2()),
+        ];
+
+        const sp1 = scene.add.sprite(100, 100, TEXTURE_KEY);
+        sp1.play(TEXTURE_KEY + ':idle');
+        await new Promise(r => setTimeout(r, 200));
+        const sp2 = scene.add.sprite(200, 100, TEXTURE_KEY);
+        sp2.play(TEXTURE_KEY + ':walk');
+        await new Promise(r => setTimeout(r, 200));
+
+        game.destroy(true); el.remove();
+
+        const regions = {};
+        for (const [n, e] of Object.entries(atlas.frames || {})) {
+          regions[n] = { frame: e.frame, sss: e.spriteSourceSize, ss: e.sourceSize, trimmed: e.trimmed };
+        }
+
+        results.single = {
+          ok: true, artifacts: res.artifacts.length, pages: 1,
+          names, keys, repeat: anims.anims[0]?.repeat,
+          idlePlay: sp1.anims.isPlaying, walkPlay: sp2.anims.isPlaying,
+          srcCount: tex.source.length, regions, originDiffs,
+        };
+      } catch (e) { results.single = { ok: false, error: e.message }; }
+    }
+
+    async function testMulti() {
+      try {
+        const frames = await buildFrames();
+        const res = await encodePhaserAtlasPackage(frames, {
+          fps: 10, scale: 100, trim: true, padding: 0,
+          maxPageSize: 40, loop: true, outputName: 'multi-t',
+          destination: 'zip', textureKey: 'multi-t', animations: ANIMS,
+        });
+        if (!res.ok) { results.multi = { ok: false, code: res.code, msg: res.message }; return; }
+
+        const pageCount = res.artifacts.filter(a => a.mimeType === 'image/png').length;
+        const atlasBlob = res.artifacts.find(a => a.fileName.endsWith('.atlas.json'));
+        const animsBlob = res.artifacts.find(a => a.fileName.endsWith('.animations.json'));
+        const pngBlobs = res.artifacts.filter(a => a.mimeType === 'image/png');
+        const atlas = JSON.parse(await atlasBlob.blob.text());
+
+        const pageUrls = pngBlobs.map(pb => URL.createObjectURL(pb.blob));
+        atlas.textures.forEach((texture, index) => { texture.image = pageUrls[index]; });
+        const runtimeAtlasUrl = URL.createObjectURL(new Blob([JSON.stringify(atlas)], { type: 'application/json' }));
+        const animationsUrl = URL.createObjectURL(animsBlob.blob);
+        const loaderErrors = [];
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        const loaded = await new Promise((resolve, reject) => {
+          let game;
+          class S extends Phaser.Scene {
+            constructor() { super('S'); }
+            preload() {
+              this.load.on('loaderror', file => loaderErrors.push(file.key));
+              this.load.multiatlas('multi-t', runtimeAtlasUrl, '');
+              this.load.animation('multi-t-anims', animationsUrl);
+            }
+            create() {
+              const texture = this.textures.get('multi-t');
+              const sprite = this.add.sprite(100, 100, 'multi-t').play('multi-t:walk');
+              resolve({ game, texture, sprite });
+            }
+          }
+          game = new Phaser.Game({ type: Phaser.CANVAS, transparent: true, width: 320, height: 240, parent: el, scene: [S] });
+          setTimeout(() => reject(new Error('timeout')), 15000);
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const loadedFrames = loaded.texture.getFrameNames().filter(name => name !== '__BASE').length;
+        const walkPlay = loaded.sprite.anims.isPlaying;
+        loaded.game.destroy(true);
+        for (const url of [...pageUrls, runtimeAtlasUrl, animationsUrl]) URL.revokeObjectURL(url);
+        results.multi = {
+          ok: loaderErrors.length === 0,
+          pageCount,
+          isMulti: pageCount > 1,
+          hasTextures: !!atlas.textures,
+          loadedFrames,
+          walkPlay,
+          loaderErrors,
+        };
+        el.remove();
+      } catch (e) { results.multi = { ok: false, error: e.message }; }
+    }
+
+    async function testDeterminism() {
+      try {
+        const frames = await buildFrames();
+        const opts = {
+          fps: 10, scale: 100, trim: true, padding: 2,
+          maxPageSize: 2048, loop: true, outputName: 'det',
+          destination: 'zip', textureKey: 'det', animations: ANIMS,
+        };
+        const r1 = await encodePhaserAtlasPackage(frames, opts);
+        const r2 = await encodePhaserAtlasPackage(frames, opts);
+        if (!r1.ok || !r2.ok) { results.determinism = { ok: false, error: 'fail' }; return; }
+
+        const textEq = [];
+        for (let i = 0; i < r1.artifacts.length; i++) {
+          if (r1.artifacts[i].mimeType !== 'image/png') {
+            const t1 = await r1.artifacts[i].blob.text();
+            const t2 = await r2.artifacts[i].blob.text();
+            textEq.push({ n: r1.artifacts[i].fileName, eq: t1 === t2 });
+          }
+        }
+        const pngEq = [];
+        const p1 = r1.artifacts.filter(a => a.mimeType === 'image/png');
+        const p2 = r2.artifacts.filter(a => a.mimeType === 'image/png');
+        for (let i = 0; i < p1.length; i++) {
+          const b1 = new Uint8Array(await p1[i].blob.arrayBuffer());
+          const b2 = new Uint8Array(await p2[i].blob.arrayBuffer());
+          pngEq.push({ n: p1[i].fileName, eq: b1.length === b2.length && b1.every((v,j) => v === b2[j]) });
+        }
+
+        results.determinism = { ok: true, allText: textEq.every(t => t.eq), allPng: pngEq.every(p => p.eq), textEq, pngEq };
+      } catch (e) { results.determinism = { ok: false, error: e.message }; }
+    }
+
+    async function testMetadata() {
+      try {
+        const frames = await buildFrames();
+        const res = await encodePhaserAtlasPackage(frames, {
+          fps: 10, scale: 100, trim: true, padding: 2,
+          maxPageSize: 2048, loop: true, outputName: 'meta',
+          destination: 'zip', textureKey: 'meta', animations: ANIMS,
+          bakeIssues: [{ classification: 'baked', code: 'BONE', path: 'bones', message: 'Baked' }],
+        });
+        if (!res.ok) { results.metadata = { ok: false, code: res.code }; return; }
+
+        const text = await extractTextData(res.artifacts);
+        const mj = JSON.parse(findEntry(text, '.markers.json')?.[1] ?? 'null');
+        const rj = JSON.parse(findEntry(text, '.export-report.json')?.[1] ?? 'null');
+        const ex = findEntry(text, '.example.ts')?.[1];
+        const rm = Object.entries(text).find(([k]) => k.endsWith('/README.md'))?.[1];
+
+        results.metadata = {
+          ok: true,
+          markers: mj?.markers?.length ?? 0,
+          labels: mj?.markers?.map(m => m.label) ?? [],
+          format: rj?.format,
+          issues: rj?.issues?.length ?? 0,
+          hasEx: !!ex, exLoad: ex?.includes('load.atlas') ?? false,
+          hasRm: !!rm, rmPhaser: rm?.includes('Phaser') ?? false,
+          paths: res.artifacts.map(a => a.relativePath ?? a.fileName),
+        };
+      } catch (e) { results.metadata = { ok: false, error: e.message }; }
+    }
+
+    async function run() {
+      try {
+        await testSingle();
+        await testMulti();
+        await testDeterminism();
+        await testMetadata();
+      } catch (e) { results.errors.push({ g: e.message }); }
+      window.__EXPORT_DONE = true;
+    }
+
+    run();
+  </script>
+</body>
+</html>

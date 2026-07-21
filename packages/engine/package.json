@@ -1,0 +1,20 @@
+{
+  "name": "@kukla2d/engine",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./editorEngine": {
+      "types": "./src/editorEngine.ts",
+      "import": "./src/editorEngine.ts"
+    }
+  },
+  "dependencies": {
+    "@kukla2d/contracts": "*",
+    "gl-matrix": "^3.4.4"
+  }
+}

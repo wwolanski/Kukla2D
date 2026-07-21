@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Phaser Atlas Contract Test</title>
+  <style>body { margin: 0; }</style>
+</head>
+<body>
+  <script type="importmap">
+  {
+    "imports": {
+      "phaser": "/node_modules/phaser/dist/phaser.esm.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import Phaser from 'phaser';
+
+    const results = { single: null, multi: null, errors: [] };
+    window.__PHASER_RESULTS = results;
+
+    class SingleScene extends Phaser.Scene {
+      constructor() { super('SingleScene'); }
+
+      preload() {
+        this.load.atlas(
+          'test-char',
+          '/test/fixtures/phaser-atlas-contract/single/page.png',
+          '/test/fixtures/phaser-atlas-contract/single/atlas.json'
+        );
+        this.load.animation(
+          'test-char-anims',
+          '/test/fixtures/phaser-atlas-contract/single/animations.json'
+        );
+      }
+
+      create() {
+        try {
+          const sprite = this.add.sprite(100, 100, 'test-char');
+          sprite.play('test-char:idle');
+
+          const texture = this.textures.get('test-char');
+          const frameNames = texture.getFrameNames().filter(n => n !== '__BASE');
+
+          results.single = {
+            loaded: true,
+            frameNames: frameNames.sort(),
+            animationPlaying: sprite.anims.isPlaying,
+            currentFrame: sprite.frame.name,
+            textureSourceCount: texture.source.length,
+          };
+        } catch (e) {
+          results.errors.push({ scene: 'single', message: e.message, stack: e.stack });
+        }
+
+        this.scene.start('MultiScene');
+      }
+    }
+
+    class MultiScene extends Phaser.Scene {
+      constructor() { super('MultiScene'); }
+
+      preload() {
+        this.load.multiatlas(
+          'test-char-m',
+          '/test/fixtures/phaser-atlas-contract/multi/atlas.json',
+          '/test/fixtures/phaser-atlas-contract/multi/'
+        );
+        this.load.animation(
+          'test-char-m-anims',
+          '/test/fixtures/phaser-atlas-contract/multi/animations.json'
+        );
+      }
+
+      create() {
+        try {
+          const sprite = this.add.sprite(100, 100, 'test-char-m');
+          sprite.play('test-char:walk');
+
+          const texture = this.textures.get('test-char-m');
+          const frameNames = texture.getFrameNames().filter(n => n !== '__BASE');
+
+          results.multi = {
+            loaded: true,
+            frameNames: frameNames.sort(),
+            animationPlaying: sprite.anims.isPlaying,
+            currentFrame: sprite.frame.name,
+            textureSourceCount: texture.source.length,
+          };
+        } catch (e) {
+          results.errors.push({ scene: 'multi', message: e.message, stack: e.stack });
+        }
+
+        results.done = true;
+      }
+    }
+
+    const game = new Phaser.Game({
+      type: Phaser.AUTO,
+      width: 320,
+      height: 240,
+      parent: document.body,
+      scene: [SingleScene, MultiScene],
+      callbacks: {
+        postBoot: () => {
+          results.phaserVersion = Phaser.VERSION;
+        }
+      }
+    });
+
+    window.__PHASER_GAME = game;
+  </script>
+</body>
+</html>

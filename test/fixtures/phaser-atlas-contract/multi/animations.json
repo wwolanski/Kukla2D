@@ -1,0 +1,32 @@
+{
+  "anims": [
+    {
+      "key": "test-char:walk",
+      "type": "frame",
+      "frames": [
+        {
+          "key": "test-char-m",
+          "frame": "walk/0000",
+          "duration": 0
+        },
+        {
+          "key": "test-char-m",
+          "frame": "walk/0001",
+          "duration": 0
+        },
+        {
+          "key": "test-char-m",
+          "frame": "walk/0002",
+          "duration": 0
+        }
+      ],
+      "frameRate": 8,
+      "skipMissedFrames": true,
+      "delay": 0,
+      "repeat": -1,
+      "repeatDelay": 0,
+      "yoyo": false
+    }
+  ],
+  "globalTimeScale": 1
+}
