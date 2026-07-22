@@ -1,11 +1,6 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 
-import type {
-  AssetId,
-  Node,
-  PartNode,
-  Transform,
-} from '@kukla2d/contracts';
+import type { Node, PartNode, Transform } from '@kukla2d/contracts';
 
 import { useEditorStore } from '@/store/editorStore';
 import { useProjectStore } from '@/store/projectStore';
@@ -17,8 +12,6 @@ import {
   scaleLinkedNodeGroup,
   translateLinkedNodeGroup,
 } from '@/features/rigging';
-
-import { uid } from '@/lib/uid';
 
 type TransformField = keyof Transform;
 
@@ -118,12 +111,11 @@ function useTransformInspectorControllerImpl(node: Node) {
 export const useTransformInspectorController = (...args: Parameters<typeof useTransformInspectorControllerImpl>): ReturnType<typeof useTransformInspectorControllerImpl> => useTransformInspectorControllerImpl(...args);
 
 function useTextureInspectorControllerImpl(node: PartNode) {
-  const updateProject = useProjectStore(state => state.updateProject);
   const textures = useProjectStore(state => state.project.textures);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const exportTexture = useCallback(() => {
-    const texture = textures.find(candidate => String(candidate.id) === String(node.id));
+    const textureId = node.textureId ?? node.id;
+    const texture = textures.find(candidate => String(candidate.id) === String(textureId));
     if (!texture) return;
     const link = document.createElement('a');
     link.href = texture.source;
@@ -133,39 +125,7 @@ function useTextureInspectorControllerImpl(node: PartNode) {
     link.remove();
   }, [node.id, node.name, textures]);
 
-  const replaceTexture = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = readerEvent => {
-      const source = readerEvent.target?.result;
-      if (typeof source !== 'string') return;
-      const image = new Image();
-      image.onload = () => {
-        updateProject((project, versionControl) => {
-          const texture = project.textures.find(candidate => String(candidate.id) === String(node.id));
-          if (texture) texture.source = source;
-          else {
-            const textureId = uid() as AssetId;
-            project.textures.push({ id: textureId, source });
-            const target = project.nodes.find(candidate => candidate.id === node.id);
-            if (target?.type === 'part') target.textureId = textureId;
-          }
-          const target = project.nodes.find(candidate => candidate.id === node.id);
-          if (target?.type === 'part') {
-            target.imageWidth = image.width;
-            target.imageHeight = image.height;
-          }
-          versionControl.textureVersion += 1;
-        });
-      };
-      image.src = source;
-    };
-    reader.readAsDataURL(file);
-  }, [node.id, updateProject]);
-
-  return { fileInputRef, exportTexture, replaceTexture };
+  return { exportTexture };
 }
 
 export const useTextureInspectorController = (...args: Parameters<typeof useTextureInspectorControllerImpl>): ReturnType<typeof useTextureInspectorControllerImpl> => useTextureInspectorControllerImpl(...args);
