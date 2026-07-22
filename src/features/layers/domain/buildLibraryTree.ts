@@ -5,6 +5,8 @@ import type {
   Texture,
 } from '@kukla2d/contracts';
 
+import { buildUniqueTextureNameMap } from '@/domain/libraryAssetNames';
+
 export interface LibraryTreeInput {
   libraryFolders?: readonly LibraryFolder[];
   assetPlacements?: readonly AssetPlacement[];
@@ -46,6 +48,7 @@ export function buildLibraryTree({
   const placements = assetPlacements ?? [];
   const texMap = new Map<string, Texture>(textures.map(t => [t.id, t]));
   const nodeMap = new Map<string, Node>(nodes.map(n => [n.id, n]));
+  const displayNames = buildUniqueTextureNameMap(textures, nodes);
   const childrenByParent = new Map<string | null, FolderEntry[]>();
 
   for (const folder of folders) {
@@ -83,7 +86,7 @@ export function buildLibraryTree({
       const tex = texMap.get(assetId);
       const node = nodeMap.get(assetId);
       if (!tex) continue;
-      const localName = node?.name ?? tex.fileName ?? assetId;
+      const localName = displayNames.get(assetId) ?? assetId;
       const sourceName = tex.fileName ?? null;
       result.push({
         kind: 'asset',
@@ -106,7 +109,7 @@ export function buildLibraryTree({
   for (const tex of textures) {
     if (assetIdsInFolder.has(tex.id)) continue;
     const node = nodeMap.get(tex.id);
-    const localName = node?.name ?? tex.fileName ?? tex.id;
+    const localName = displayNames.get(tex.id) ?? tex.id;
     const sourceName = tex.fileName ?? null;
     looseAssets.push({
       kind: 'asset',

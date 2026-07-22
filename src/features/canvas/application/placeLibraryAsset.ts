@@ -3,6 +3,8 @@ import type { AssetId, NodeId, PartNode, ProjectDocument, Texture } from '@kukla
 import { useEditorStore } from '@/store/editorStore';
 import type { ProjectStore } from '@/store/project/projectStoreTypes';
 
+import { buildUniqueTextureNameMap, createUniqueName } from '@/domain/libraryAssetNames.js';
+
 import { clientToCanvasSpace } from '@/features/canvas/domain/coordinates.js';
 
 import { uid } from '@/lib/uid.js';
@@ -39,6 +41,7 @@ export function placeLibraryAsset({
   const sourceNode = projectRef.current.nodes.find((node): node is PartNode => node.type === 'part'
     && (node.id === assetId || node.textureId === assetId));
   const sourceTexture = projectRef.current.textures.find(texture => texture.id === assetId);
+  const sourceDisplayName = buildUniqueTextureNameMap(projectRef.current.textures, projectRef.current.nodes).get(assetId);
   const canvas = canvasRef.current;
   if (!sourceTexture || !canvas) return Promise.resolve(false);
 
@@ -53,6 +56,7 @@ export function placeLibraryAsset({
     const placedNode: PartNode = {
       ...node,
       id: newId,
+      name: createUniqueName(node.name || sourceDisplayName || 'Library asset', projectRef.current.nodes.map(candidate => candidate.name)),
       parent: null,
       textureId: assetId,
       draw_order: Math.max(-1, ...projectRef.current.nodes
@@ -86,7 +90,7 @@ export function placeLibraryAsset({
       if (sourceImageData) textureCache?.__internal.imageDataByPartId.set(assetId, sourceImageData);
       resolve(addNode({
         type: 'part',
-        name: sourceTexture.fileName?.replace(/\.[^.]+$/, '') ?? 'Library asset',
+        name: sourceDisplayName ?? sourceTexture.fileName?.replace(/\.[^.]+$/, '') ?? 'Library asset',
         opacity: 1,
         visible: true,
         clip_mask: null,

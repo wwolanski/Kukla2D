@@ -213,6 +213,7 @@ const AnimationSchema = z.object({
 const TextureSchema = z.object({
   id: z.string().min(1),
   source: z.string(),
+  name: z.string().min(1).optional(),
   fileName: z.string().optional(),
   fileSize: z.number().nullable().optional(),
 });

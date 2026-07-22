@@ -196,14 +196,16 @@ describe('PSD import', () => {
 
       await act(async () => {
         await result.current.importPng({ name: 'replacement.png', type: 'image/png', size: 1234 });
+        await result.current.importPng({ name: 'replacement.png', type: 'image/png', size: 1234 });
       });
 
       expect(project.canvas).toEqual({ width: 800, height: 600, presetId: 'custom', fitSource: null });
       expect(project.nodes).toEqual([existingNode]);
       expect(project.textures).toEqual([
-        expect.objectContaining({ source: 'blob:replacement', fileName: 'replacement.png', fileSize: 1234 }),
+        expect.objectContaining({ name: 'replacement', source: 'blob:replacement', fileName: 'replacement.png', fileSize: 1234 }),
+        expect.objectContaining({ name: 'replacement (1)', source: 'blob:replacement', fileName: 'replacement.png', fileSize: 1234 }),
       ]);
-      expect(project.assetPlacements).toHaveLength(1);
+      expect(project.assetPlacements).toHaveLength(2);
       expect(centerView).not.toHaveBeenCalled();
       expect(uploadTexture).not.toHaveBeenCalled();
     } finally {

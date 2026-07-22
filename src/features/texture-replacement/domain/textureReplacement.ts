@@ -133,7 +133,7 @@ export function collectTextureReplacementCandidates(project: ProjectDocument): T
   const usedTextureIds = new Set(collectTextureReplacementSources(project).map(source => source.textureId));
   return project.textures
     .filter(texture => !usedTextureIds.has(texture.id))
-    .map(texture => ({ textureId: texture.id, name: texture.fileName ?? texture.id }));
+    .map(texture => ({ textureId: texture.id, name: texture.name ?? texture.fileName ?? texture.id }));
 }
 
 function clearMeshDependencies(project: ProjectDocument, node: PartNode): void {

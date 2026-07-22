@@ -7,6 +7,8 @@ import { applyHistoricalClipToPartId } from '@/io/psdOrganizer.js';
 import { useImportSettingsStore } from '@/store/importSettingsStore';
 import type { ProjectStore } from '@/store/project/projectStoreTypes';
 
+import { buildUniqueTextureNameMap, createUniqueName } from '@/domain/libraryAssetNames.js';
+
 import { uid } from '@/lib/uid.js';
 
 import { basename, computeAlphaContours, computeImageBounds } from './imageUtils.js';
@@ -80,18 +82,22 @@ export function useCanvasAssetImport({
       const imageBounds = computeImageBounds(imageData);
       const alphaContours = computeAlphaContours(imageData);
       updateProject((projectDraft, versionControl) => {
+        const displayName = createUniqueName(
+          basename(file.name),
+          buildUniqueTextureNameMap(projectDraft.textures, projectDraft.nodes).values(),
+        );
         if (autoAddToCanvas && projectDraft.nodes.length === 0) {
           projectDraft.canvas.width = image.width;
           projectDraft.canvas.height = image.height;
           projectDraft.canvas.presetId = 'custom';
           projectDraft.canvas.fitSource = null;
         }
-        projectDraft.textures.push({ id: partId, source: url, fileName: file.name, fileSize: file.size });
+        projectDraft.textures.push({ id: partId, source: url, name: displayName, fileName: file.name, fileSize: file.size });
         if (!projectDraft.assetPlacements) projectDraft.assetPlacements = [];
         projectDraft.assetPlacements.push({ assetId: partId, folderId: null });
         if (autoAddToCanvas) {
           projectDraft.nodes.push({
-            id: partId, type: 'part', name: basename(file.name), parent: null,
+            id: partId, type: 'part', name: displayName, parent: null,
             draw_order: projectDraft.nodes.filter(node => node.type === 'part').length,
             opacity: 1, visible: true, clip_mask: null,
             transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, pivotX: image.width / 2, pivotY: image.height / 2 },
@@ -130,6 +136,16 @@ export function useCanvasAssetImport({
         projectDraft.libraryFolders.push({ id: folderId, name: fileName.replace(/\.[^.]+$/, ''), parentId: null, sourceFileName: fileName, origin: 'import' });
       }
       if (!projectDraft.assetPlacements) projectDraft.assetPlacements = [];
+      const reservedNames = [...buildUniqueTextureNameMap(projectDraft.textures, projectDraft.nodes).values()];
+      const layerDisplayNames = layers.map(layer => {
+        const name = createUniqueName(layer.name, reservedNames);
+        reservedNames.push(name);
+        return name;
+      });
+      const sourceFileNames = new Map(partIds.map((partId, index) => [
+        partId,
+        `${layers[index]?.name || partId}.png`,
+      ]));
       const nodes: ImportedPartNode[] = layers.map((layer, index) => {
         const partId = partIds[index];
         if (!partId) throw new Error(`Missing generated part id for PSD layer ${index}`);
@@ -167,7 +183,7 @@ export function useCanvasAssetImport({
           image.src = url;
         }, 'image/png');
         return {
-          id: partId, type: 'part', name: layer.name, parent: null, draw_order: layers.length - 1 - index,
+          id: partId, type: 'part', name: layerDisplayNames[index] ?? layer.name, parent: null, draw_order: layers.length - 1 - index,
           opacity: layer.opacity, visible: layer.visible, clip_mask: null,
           transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, pivotX: width / 2, pivotY: height / 2 },
           meshOpts: null, mesh: null, imageWidth: width, imageHeight: height,
@@ -175,7 +191,13 @@ export function useCanvasAssetImport({
         };
       });
       for (const node of applyHistoricalClipToPartId(nodes)) {
-        projectDraft.textures.push({ id: node.id, source: '', fileName: `${node.name || node.id}.png`, fileSize: null });
+        projectDraft.textures.push({
+          id: node.id,
+          source: '',
+          name: node.name || node.id,
+          fileName: sourceFileNames.get(node.id) ?? `${node.name || node.id}.png`,
+          fileSize: null,
+        });
         projectDraft.assetPlacements.push({ assetId: node.id, folderId });
         if (autoAddToCanvas) projectDraft.nodes.push(node);
       }
