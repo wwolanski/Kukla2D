@@ -4,6 +4,7 @@ import type { AssetId, NodeId, PartNode, ProjectDocument, ProjectResourceOwner }
 
 import { applyHistoricalClipToPartId } from '@/io/psdOrganizer.js';
 
+import { useImportSettingsStore } from '@/store/importSettingsStore';
 import type { ProjectStore } from '@/store/project/projectStoreTypes';
 
 import { uid } from '@/lib/uid.js';
@@ -58,7 +59,8 @@ export function useCanvasAssetImport({
   if (!imageDataMapRef.current) imageDataMapRef.current = textureCache.__internal.imageDataByPartId;
 
   const importPng = useCallback((file: File): Promise<void> => new Promise((resolve, reject) => {
-    const shouldCenterAfterImport = projectRef.current.nodes.length === 0;
+    const autoAddToCanvas = useImportSettingsStore.getState().autoAddToCanvas;
+    const shouldCenterAfterImport = autoAddToCanvas && projectRef.current.nodes.length === 0;
     const url = URL.createObjectURL(file);
     resourceOwnerRef.current?.track(url);
     const image = new Image();
@@ -78,7 +80,7 @@ export function useCanvasAssetImport({
       const imageBounds = computeImageBounds(imageData);
       const alphaContours = computeAlphaContours(imageData);
       updateProject((projectDraft, versionControl) => {
-        if (projectDraft.nodes.length === 0) {
+        if (autoAddToCanvas && projectDraft.nodes.length === 0) {
           projectDraft.canvas.width = image.width;
           projectDraft.canvas.height = image.height;
           projectDraft.canvas.presetId = 'custom';
@@ -87,20 +89,22 @@ export function useCanvasAssetImport({
         projectDraft.textures.push({ id: partId, source: url, fileName: file.name, fileSize: file.size });
         if (!projectDraft.assetPlacements) projectDraft.assetPlacements = [];
         projectDraft.assetPlacements.push({ assetId: partId, folderId: null });
-        projectDraft.nodes.push({
-          id: partId, type: 'part', name: basename(file.name), parent: null,
-          draw_order: projectDraft.nodes.filter(node => node.type === 'part').length,
-          opacity: 1, visible: true, clip_mask: null,
-          transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, pivotX: image.width / 2, pivotY: image.height / 2 },
-          meshOpts: null, mesh: null, imageWidth: image.width, imageHeight: image.height,
-          imageBounds: imageBounds || { minX: 0, minY: 0, maxX: image.width, maxY: image.height },
-          alphaContours,
-        });
+        if (autoAddToCanvas) {
+          projectDraft.nodes.push({
+            id: partId, type: 'part', name: basename(file.name), parent: null,
+            draw_order: projectDraft.nodes.filter(node => node.type === 'part').length,
+            opacity: 1, visible: true, clip_mask: null,
+            transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, pivotX: image.width / 2, pivotY: image.height / 2 },
+            meshOpts: null, mesh: null, imageWidth: image.width, imageHeight: image.height,
+            imageBounds: imageBounds || { minX: 0, minY: 0, maxX: image.width, maxY: image.height },
+            alphaContours,
+          });
+        }
         versionControl.textureVersion++;
       });
       if (shouldCenterAfterImport) centerView(image.width, image.height);
       const gateway = sceneGatewayRef.current;
-      if (gateway) {
+      if (autoAddToCanvas && gateway) {
         gateway.uploadTexture(partId, image);
         gateway.uploadQuadFallback(partId, image.width, image.height);
         markDirty();
@@ -112,11 +116,14 @@ export function useCanvasAssetImport({
   }), [centerView, markDirty, projectRef, resourceOwnerRef, sceneGatewayRef, updateProject]);
 
   const finalizePsdImport = useCallback((width: number, height: number, layers: PsdLayer[], partIds: PartAssetId[], fileName: string) => {
+    const autoAddToCanvas = useImportSettingsStore.getState().autoAddToCanvas;
     updateProject((projectDraft, versionControl) => {
-      projectDraft.canvas.width = width;
-      projectDraft.canvas.height = height;
-      projectDraft.canvas.presetId = 'custom';
-      projectDraft.canvas.fitSource = null;
+      if (autoAddToCanvas) {
+        projectDraft.canvas.width = width;
+        projectDraft.canvas.height = height;
+        projectDraft.canvas.presetId = 'custom';
+        projectDraft.canvas.fitSource = null;
+      }
       const folderId = fileName ? uid() : null;
       if (folderId) {
         if (!projectDraft.libraryFolders) projectDraft.libraryFolders = [];
@@ -151,7 +158,7 @@ export function useCanvasAssetImport({
           });
           const image = new Image();
           image.onload = () => {
-            const gateway = sceneGatewayRef.current;
+            const gateway = autoAddToCanvas ? sceneGatewayRef.current : null;
             if (!gateway) return;
             gateway.uploadTexture(partId, image);
             gateway.uploadQuadFallback(partId, width, height);
@@ -170,11 +177,11 @@ export function useCanvasAssetImport({
       for (const node of applyHistoricalClipToPartId(nodes)) {
         projectDraft.textures.push({ id: node.id, source: '', fileName: `${node.name || node.id}.png`, fileSize: null });
         projectDraft.assetPlacements.push({ assetId: node.id, folderId });
-        projectDraft.nodes.push(node);
+        if (autoAddToCanvas) projectDraft.nodes.push(node);
       }
       versionControl.textureVersion++;
     });
-    centerView(width, height);
+    if (autoAddToCanvas) centerView(width, height);
   }, [centerView, markDirty, resourceOwnerRef, sceneGatewayRef, updateProject]);
 
   const processPsdFile = useCallback(async (file: File): Promise<void> => {
