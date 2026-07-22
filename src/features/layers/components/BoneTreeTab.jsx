@@ -1,4 +1,4 @@
-import { EyeOff, Images, Rows3 } from 'lucide-react';
+import { ArrowLeftRight, EyeOff, Images, Rows3 } from 'lucide-react';
 import { useState } from 'react';
 
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +40,7 @@ export function BoneTreeTab({
   onToggleExpand,
   onToggleAll,
   onToggleImages,
+  onReplaceTextures,
   onToggleVisible,
   onToggleLink,
   onUnassignNode,
@@ -138,7 +139,7 @@ export function BoneTreeTab({
         <button
           type="button"
           aria-pressed={allExpanded}
-          className={`inline-flex h-6 w-[108px] items-center justify-center gap-1 rounded px-1.5 text-[10px] font-medium transition-colors hover:bg-muted ${
+          className={`inline-flex h-6 flex-1 items-center justify-center gap-1 rounded px-1.5 text-[10px] font-medium transition-colors hover:bg-muted ${
             allExpanded ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={onToggleAll}
@@ -150,7 +151,7 @@ export function BoneTreeTab({
         <button
           type="button"
           aria-pressed={showImages}
-          className={`ml-1 inline-flex h-6 w-[108px] items-center justify-center gap-1 rounded px-1.5 text-[10px] font-medium transition-colors hover:bg-muted ${
+          className={`ml-1 inline-flex h-6 flex-1 items-center justify-center gap-1 rounded px-1.5 text-[10px] font-medium transition-colors hover:bg-muted ${
             showImages ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={onToggleImages}
@@ -158,6 +159,16 @@ export function BoneTreeTab({
         >
           {showImages ? <EyeOff className="h-3 w-3 shrink-0" /> : <Images className="h-3 w-3 shrink-0" />}
           {showImages ? 'Hide images' : 'Show images'}
+        </button>
+        <button
+          type="button"
+          className="ml-1 inline-flex h-6 flex-1 items-center justify-center gap-1 rounded px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          onClick={onReplaceTextures}
+          disabled={editorMode === 'animation'}
+          title={editorMode === 'animation' ? 'Texture replacement is locked in Animation mode' : 'Replace one or many textures from Library'}
+        >
+          <ArrowLeftRight className="h-3 w-3 shrink-0" />
+          Replace
         </button>
       </div>
 

@@ -65,7 +65,7 @@ describe('buildLibraryTree', () => {
     const textures = [makeTexture('t1', 'orphan.png')];
     const result = buildLibraryTree({ libraryFolders: [], assetPlacements: [], textures, nodes: [] });
 
-    expect(result[0].name).toBe('orphan.png');
+    expect(result[0].name).toBe('orphan');
     expect(result[0].sourceFileName).toBe('orphan.png');
   });
 

@@ -82,6 +82,35 @@ describe('saveProject', () => {
     }
   });
 
+  it('round-trips the canonical Library texture name separately from the source filename', async () => {
+    vi.stubGlobal('fetch', okFetchMock());
+    vi.stubGlobal('Image', class {
+      constructor() {
+        setTimeout(() => this.onload?.(), 0);
+      }
+      set src(_) {}
+    });
+    vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob://mock');
+    vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => {});
+    const project = makeMinimalProject();
+    project.textures = [{
+      id: 'right-arm',
+      source: 'memory://right-arm.png',
+      name: 'Right Arm (1)',
+      fileName: 'Right Arm.png',
+      fileSize: 7,
+    }];
+
+    const blob = await saveProject(project);
+    const loaded = await loadProject(await blob.arrayBuffer());
+    try {
+      expect(loaded.project.textures[0].name).toBe('Right Arm (1)');
+      expect(loaded.project.textures[0].fileName).toBe('Right Arm.png');
+    } finally {
+      loaded.resources.dispose();
+    }
+  });
+
   it('preserves clipToPartId in serialized project.json', async () => {
     vi.stubGlobal('fetch', okFetchMock());
 

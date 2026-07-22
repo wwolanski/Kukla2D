@@ -1,10 +1,14 @@
-import { FolderPlus, Loader2, Sparkles, Upload } from 'lucide-react';
+import { FolderPlus, Loader2, Settings, Sparkles, Upload } from 'lucide-react';
 import { useState } from 'react';
+
+import { useImportSettingsStore } from '@/store/importSettingsStore';
 
 import { loadExampleProjectFile } from '@/features/projects';
 
 import { BorderBeam } from '@/components/ui/border-beam';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 
 import { LibraryAssetRow } from './rows/LibraryAssetRow.jsx';
 import { LibraryFolderRow } from './rows/LibraryFolderRow.jsx';
@@ -34,6 +38,8 @@ export function LibraryTab({
   const isEmpty = tree.length === 0;
   const [isLoadingExample, setIsLoadingExample] = useState(false);
   const [exampleError, setExampleError] = useState('');
+  const autoAddToCanvas = useImportSettingsStore(state => state.autoAddToCanvas);
+  const setAutoAddToCanvas = useImportSettingsStore(state => state.setAutoAddToCanvas);
 
   const handleLoadExample = async () => {
     setIsLoadingExample(true);
@@ -110,6 +116,41 @@ export function LibraryTab({
           <FolderPlus className="h-3 w-3" />
           New Folder
         </button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="ml-auto inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground"
+              title="Library import settings"
+              aria-label="Library import settings"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" sideOffset={6} className="w-72 p-3">
+            <div className="mb-3">
+              <p className="text-xs font-semibold">Import settings</p>
+              <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">Controls artwork imported with button or dropped into Library.</p>
+            </div>
+            <div className="flex items-start gap-3 rounded border bg-muted/20 p-2.5">
+              <Switch
+                id="library-auto-add-to-canvas"
+                checked={autoAddToCanvas}
+                onCheckedChange={setAutoAddToCanvas}
+                aria-label="Automatically add imported artwork to canvas"
+                className="mt-0.5"
+              />
+              <label htmlFor="library-auto-add-to-canvas" className="min-w-0 cursor-pointer">
+                <span className="block text-xs font-medium">Auto-add to canvas</span>
+                <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">
+                  {autoAddToCanvas
+                    ? 'Imported artwork appears in Library and on canvas.'
+                    : 'Imported artwork stays in Library until placed or used as replacement.'}
+                </span>
+              </label>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <ScrollArea

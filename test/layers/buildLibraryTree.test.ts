@@ -73,6 +73,28 @@ describe('buildLibraryTree', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe('t1');
   });
+
+  it('uses extension-free unique display names for legacy duplicate textures', () => {
+    const rows = buildLibraryTree({
+      textures: [
+        texture('t1', { fileName: 'Right Arm.png' }),
+        texture('t2', { fileName: 'Right Arm.png' }),
+        texture('t3', { fileName: 'Right Arm.png' }),
+      ],
+      nodes: [],
+    });
+    expect(rows.map(row => row.name)).toEqual(['Right Arm', 'Right Arm (1)', 'Right Arm (2)']);
+    expect(rows.map(row => row.sourceFileName)).toEqual(['Right Arm.png', 'Right Arm.png', 'Right Arm.png']);
+  });
+
+  it('prefers persistent texture display name over fileName', () => {
+    const rows = buildLibraryTree({
+      textures: [texture('t1', { name: 'Custom Name', fileName: 'source.png' })],
+      nodes: [],
+    });
+    expect(rows[0].name).toBe('Custom Name');
+    expect(rows[0].sourceFileName).toBe('source.png');
+  });
 });
 
 describe('flattenLibraryTree', () => {

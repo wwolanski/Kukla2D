@@ -158,6 +158,7 @@ export interface Skin {
 export interface Texture {
   id: AssetId;
   source: string;
+  name?: string;
   fileName?: string;
   fileSize?: number | null;
 }

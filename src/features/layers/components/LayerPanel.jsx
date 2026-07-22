@@ -1,4 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
+
+import { TextureReplacementModal } from '@/features/texture-replacement';
 
 import { BoneTreeTab } from './BoneTreeTab.jsx';
 import { DepthTab } from './DepthTab.jsx';
@@ -8,6 +10,7 @@ const LibraryTab = lazy(() => import('./LibraryTab.jsx').then(m => ({ default: m
 
 export function LayerPanel({ onImportClick, onImportFiles, onLoadExampleProject }) {
   const { shared, tabs, library, depth, bones } = useLayerPanelController({ onImportClick, onImportFiles });
+  const [replaceTexturesOpen, setReplaceTexturesOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -95,6 +98,7 @@ export function LayerPanel({ onImportClick, onImportFiles, onLoadExampleProject 
           onToggleExpand={bones.onToggleExpand}
           onToggleAll={bones.onToggleAll}
           onToggleImages={bones.onToggleImages}
+          onReplaceTextures={() => setReplaceTexturesOpen(true)}
           onToggleVisible={bones.onToggleVisible}
           onToggleLink={bones.onToggleLink}
           onUnassignNode={bones.onUnassignNode}
@@ -109,6 +113,7 @@ export function LayerPanel({ onImportClick, onImportFiles, onLoadExampleProject 
           onDeleteNode={bones.onDeleteNode}
         />
       )}
+      <TextureReplacementModal open={replaceTexturesOpen} onOpenChange={setReplaceTexturesOpen} />
     </div>
   );
 }

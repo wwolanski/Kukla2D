@@ -8,6 +8,7 @@ import { useProjectStore } from '@/store/projectStore';
 
 import { HOVER_SOURCE_PANEL, resolveVisibleHoverHit } from '@/domain/hoverPolicy.js';
 import { writeLibraryAssetDrag } from '@/domain/libraryAssetDrag.js';
+import { buildUniqueTextureNameMap, createUniqueName } from '@/domain/libraryAssetNames.js';
 
 import { useWorkflowActor } from '@/features/canvas';
 
@@ -305,8 +306,14 @@ function useLayerPanelControllerImpl(options: LayerPanelControllerOptions = {}) 
 
   const onRenameLibraryAsset = useCallback((assetId: string, newName: string) => {
     updateProject((projectDraft) => {
+      const existingNames = [...buildUniqueTextureNameMap(projectDraft.textures, projectDraft.nodes).entries()]
+        .filter(([textureId]) => textureId !== assetId)
+        .map(([, name]) => name);
+      const uniqueName = createUniqueName(newName, existingNames);
+      const texture = projectDraft.textures.find(candidate => candidate.id === assetId);
+      if (texture) texture.name = uniqueName;
       const node = projectDraft.nodes.find(n => n.id === assetId);
-      if (node) node.name = newName;
+      if (node) node.name = uniqueName;
     });
   }, [updateProject]);
 

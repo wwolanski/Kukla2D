@@ -6,6 +6,7 @@ import { formatProjectError } from '@/io/projectErrorMessages';
 import { hasProjectFileExtension } from '@/io/projectFormat';
 
 import type { AnimationStore } from '@/store/animationStoreTypes';
+import { useImportSettingsStore } from '@/store/importSettingsStore';
 import type { ProjectStore } from '@/store/project/projectStoreTypes';
 
 import type { WorkflowEvent } from '@/features/canvas/domain/workflowContracts.js';
@@ -91,7 +92,8 @@ export function useCanvasImport(args: CanvasImportArgs): CanvasImportController 
     imageDataMapRef: { current: textureCache.__internal.imageDataByPartId },
   });
   const importPsdFile = useCallback(async (file: File): Promise<void> => {
-    if (projectRef.current.nodes.length > 0) {
+    const autoAddToCanvas = useImportSettingsStore.getState().autoAddToCanvas;
+    if (autoAddToCanvas && projectRef.current.nodes.length > 0) {
       setPendingFile(file);
       setConfirmWipeOpen(true);
       return;

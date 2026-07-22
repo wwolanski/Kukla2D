@@ -180,6 +180,7 @@ export async function saveProject(project: ProjectDocument): Promise<Blob> {
   const serializedTextures: Array<{
     id: string;
     source: string;
+    name: string | undefined;
     fileName: string | undefined;
     fileSize: number | null | undefined;
   }> = [];
@@ -192,6 +193,7 @@ export async function saveProject(project: ProjectDocument): Promise<Blob> {
     serializedTextures.push({
       id: tex.id,
       source,
+      name: tex.name,
       fileName: tex.fileName,
       fileSize: tex.fileSize ?? blob.size,
     });
